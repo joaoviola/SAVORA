@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+<!-- AGENT-MEMORY:BEGIN -->
+- Pages live under `/$lang` (en|pt); slugs per language in `src/i18n/pages.ts`, all copy in `src/i18n/content.ts` — keeps hreflang pairs in one map.
+- Media extraction goes through the `Extractor` interface (`src/lib/extract/`); the owner's JSON scraper adapter reads `SCRAPER_URL`/`SCRAPER_API_KEY` — never fake results when unconfigured.
+- Media is proxied via `/api/public/file` with a CDN host allowlist — avoids hotlink blocks and open-proxy abuse.
+- Service worker registers only from `src/lib/pwa.ts` (guards preview/dev) — prevents stale previews.
+<!-- AGENT-MEMORY:END -->

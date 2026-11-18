@@ -10,33 +10,76 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LangRouteImport } from './routes/$lang'
+import { Route as LangIndexRouteImport } from './routes/$lang.index'
+import { Route as LangSlugRouteImport } from './routes/$lang.$slug'
+import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LangRoute = LangRouteImport.update({
+  id: '/$lang',
+  path: '/$lang',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LangIndexRoute = LangIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LangRoute,
+} as any)
+const LangSlugRoute = LangSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => LangRoute,
+} as any)
+const ApiPublicFileRoute = ApiPublicFileRouteImport.update({
+  id: '/api/public/file',
+  path: '/api/public/file',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$lang': typeof LangRouteWithChildren
+  '/$lang/$slug': typeof LangSlugRoute
+  '/$lang/': typeof LangIndexRoute
+  '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$lang/$slug': typeof LangSlugRoute
+  '/$lang': typeof LangIndexRoute
+  '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$lang': typeof LangRouteWithChildren
+  '/$lang/$slug': typeof LangSlugRoute
+  '/$lang/': typeof LangIndexRoute
+  '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/$lang' | '/$lang/$slug' | '/$lang/' | '/api/public/file'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/$lang/$slug' | '/$lang' | '/api/public/file'
+  id:
+    | '__root__'
+    | '/'
+    | '/$lang'
+    | '/$lang/$slug'
+    | '/$lang/'
+    | '/api/public/file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LangRoute: typeof LangRouteWithChildren
+  ApiPublicFileRoute: typeof ApiPublicFileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +91,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$lang': {
+      id: '/$lang'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof LangRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$lang/': {
+      id: '/$lang/'
+      path: '/'
+      fullPath: '/$lang/'
+      preLoaderRoute: typeof LangIndexRouteImport
+      parentRoute: typeof LangRoute
+    }
+    '/$lang/$slug': {
+      id: '/$lang/$slug'
+      path: '/$slug'
+      fullPath: '/$lang/$slug'
+      preLoaderRoute: typeof LangSlugRouteImport
+      parentRoute: typeof LangRoute
+    }
+    '/api/public/file': {
+      id: '/api/public/file'
+      path: '/api/public/file'
+      fullPath: '/api/public/file'
+      preLoaderRoute: typeof ApiPublicFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface LangRouteChildren {
+  LangSlugRoute: typeof LangSlugRoute
+  LangIndexRoute: typeof LangIndexRoute
+}
+
+const LangRouteChildren: LangRouteChildren = {
+  LangSlugRoute: LangSlugRoute,
+  LangIndexRoute: LangIndexRoute,
+}
+
+const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LangRoute: LangRouteWithChildren,
+  ApiPublicFileRoute: ApiPublicFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
