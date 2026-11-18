@@ -1,7 +1,19 @@
 import type { ContentType, ExtractResponse, Extractor, MediaItem } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+/**
+ * UA de crawler, não de navegador — e isto não é cosmético.
+ *
+ * Com UA de Chrome o Instagram devolve 200 com uma login wall de ~537 KB
+ * sem `contextJSON`, porque a impressão digital de TLS do fetch do Node não
+ * bate com a de um Chrome real. O endpoint de embed existe para
+ * pré-visualização de links, por isso serve o conteúdo real a crawlers:
+ * com este UA vêm ~252 KB já com `contextJSON`.
+ *
+ * Se voltar a falhar, o sintoma é exatamente esse: 200, página grande,
+ * sem `contextJSON`.
+ */
+export const UA = "facebookexternalhit/1.1";
 const RE_SHORTCODE = /instagram\.com\/(?:[^/]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/;
 const CDN = /(?:^|\.)(?:cdninstagram\.com|fbcdn\.net)$/;
 const TTL = 1800_000, MARGIN = 600_000;
