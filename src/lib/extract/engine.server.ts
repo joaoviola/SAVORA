@@ -1,8 +1,9 @@
 import { customScraper } from "./custom-scraper.server";
+import { instagramEmbed } from "./instagram-embed.server";
 import type { Extractor } from "./types";
 
-/** Register extraction engines here; the first one is used. */
-export const extractors: Extractor[] = [customScraper];
+/** Tried in order; the next one runs only when the previous fails. */
+export const extractors: Extractor[] = [instagramEmbed, customScraper];
 
 const hits = new Map<string, number[]>();
 export function rateLimited(ip: string, limit = 12, windowMs = 60_000) {

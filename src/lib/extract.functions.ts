@@ -12,7 +12,12 @@ export const extractMedia = createServerFn({ method: "POST" })
     if (rateLimited(ip)) return { ok: false, error: "rate_limited" };
     const detected = detectInstagramUrl(data.url);
     if (!detected) return { ok: false, error: "invalid_url" };
-    const res = await extractors[0]!.extract(detected.url, detected.type);
+    let res: ExtractResponse = { ok: false, error: "not_configured" };
+    for (const ex of extractors) {
+      const r = await ex.extract(detected.url, detected.type);
+      if (r.ok) { res = r; break; }
+      if (res.error === "not_configured" || r.error !== "not_configured") res = r;
+    }
     if (!res.ok) return res;
     const wrap = (u: string) => `/api/public/file?u=${encodeURIComponent(u)}`;
     return {
@@ -22,7 +27,7 @@ export const extractMedia = createServerFn({ method: "POST" })
         items: res.data.items.map((it) => ({
           ...it,
           thumbnail: `${wrap(it.thumbnail)}&inline=1`,
-          variants: it.variants.map((v) => ({ ...v, url: wrap(v.url) })),
+          variants: it.variants.map((v) => ({ ...v, url: wrap(v.url) + (it.filename ? `&name=${encodeURIComponent(it.filename)}` : "") })),
         })),
       },
     };
