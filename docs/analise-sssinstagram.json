@@ -1,0 +1,214 @@
+{
+  "alvo": "https://sssinstagram.com/",
+  "data_analise": "2026-11-18",
+  "metodo": "Analise estatica: headers HTTP, HTML servido, bundle JS (app.js 397KB), chunks lazy (link.chunk.js, openreplay.chunk.js), app.css, e probes diretos nos 3 dominios da infra.",
+  "resumo_arquitetura": "Monolito Laravel servindo HTML+SEO, com um app Vue 3 montado em #app que NAO fala com o proprio backend: ele chama um 'Worker Hub' separado (Node) que faz o scraping do Instagram, e um proxy OpenResty que entrega a midia com URL assinada e Referer forjado. O motor de extracao e herdado do SaveFrom.net.",
+
+  "dominios": [
+    {
+      "host": "sssinstagram.com",
+      "papel": "Front-end / SEO / i18n",
+      "servidor": "Cloudflare -> PHP (Laravel)",
+      "evidencia": "Assets com versionamento Laravel Mix (/js/app.js?id=<md5>, /css/app.css?id=<md5>); header 'Cache-Control: no-cache, private' (default do Laravel); X-Frame-Options: sameorigin"
+    },
+    {
+      "host": "api-wh.sssinstagram.com",
+      "papel": "Worker Hub - API de extracao, captcha e validacao de token",
+      "servidor": "Cloudflare -> Node.js (padrao Express)",
+      "evidencia": "ETag fraco W/\"11c-...\" (hash base64 do Express), 'Vary: Origin, Accept-Encoding', CORS com Access-Control-Allow-Credentials, X-Robots-Tag: noindex"
+    },
+    {
+      "host": "media.sssinstagram.com",
+      "papel": "Proxy de midia com URL assinada",
+      "servidor": "OpenResty (nginx + Lua)",
+      "evidencia": "Pagina 403 nativa assinada 'openresty'"
+    },
+    {
+      "host": "openreplay.multitool.cloud",
+      "papel": "OpenReplay self-hosted (session replay)",
+      "servidor": "ingestPoint proprio, nao o SaaS api.openreplay.com",
+      "evidencia": "ingestPoint:\"https://openreplay.multitool.cloud/ingest\" no app.js"
+    }
+  ],
+
+  "frontend": {
+    "framework": "Vue 3 (build de producao)",
+    "evidencia_vue": "Flags __VUE_PROD_HYDRATION_MISMATCH_DETAILS__, __VUE_DEVTOOLS_HOOK_REPLAY__, __VUE_SSR_SETTERS__, modulo 'vue/server-renderer' e defineComponent minificado",
+    "bundler": "webpack via Laravel Mix",
+    "code_splitting": "Chunks nomeados: {7:'openreplay.chunk', 54:'link.chunk'} + 30 chunks de i18n carregados on-demand por locale",
+    "padrao_de_integracao": "Plugin Vue instalado sobre seletores do DOM ja renderizado pelo Blade (searchInputSelector:'.form__input', searchButtonSelector:'.form__submit') - nao e SPA, e um controller progressivo sobre HTML server-side",
+    "css": "CSS proprio (~21KB) com base normalize.css. Sem Tailwind, sem Bootstrap.",
+    "componentes_identificados": ["TurnstileComponent", "CaptchaComponent", "HighlightsComponent", "MediaSearchController"],
+    "pwa": "site.webmanifest com display:standalone"
+  },
+
+  "config_real_do_app": {
+    "fonte": "chamada app.use(plugin, {...}) no app.js",
+    "mediaDownloaderDomain": "media.sssinstagram.com",
+    "workerHubDomain": "api-wh.sssinstagram.com",
+    "useWorkerHubIgApi": true,
+    "services": ["instagram"],
+    "hooks": ["searchButtonClick", "mediaModalShow", "mediaModalSwitch", "successRequest", "downloadMediaButtonClick", "failedRequest", "tabChange"]
+  },
+
+  "api_de_extracao": {
+    "endpoint_principal": {
+      "metodo": "POST",
+      "url": "https://api-wh.sssinstagram.com/api/convert",
+      "body": "{ \"target_url\": \"<url do post/reel>\" } (depois passa pelo assinador)",
+      "uso": "Reels e Posts por URL",
+      "fallback_local": "/api/convert no proprio dominio quando workerHubDomain nao esta setado"
+    },
+    "endpoints_v2": {
+      "base": "https://api-wh.sssinstagram.com/api/v2/instagram/{endpoint}",
+      "metodo": "POST",
+      "lista": [
+        { "endpoint": "userInfo", "body": "{ username }" },
+        { "endpoint": "posts", "body": "{ paginacao de perfil }" },
+        { "endpoint": "story", "body": "{ url }" },
+        { "endpoint": "stories", "body": "{ username }" },
+        { "endpoint": "highlights", "body": "{ profileId }" },
+        { "endpoint": "highlightStories", "body": "{ highlightId }" },
+        { "endpoint": "usernameSuggestions", "body": "{ query }" }
+      ]
+    },
+    "endpoints_auxiliares": [
+      { "url": "/api/captcha", "metodo": "GET", "retorno": "{ captcha, hash }" },
+      { "url": "/api/captcha", "metodo": "POST", "body": "value=<texto>&hash=<hash> (x-www-form-urlencoded)", "retorno": "{ result: <whToken> }" },
+      { "url": "/captcha?captcha=<id>", "metodo": "GET", "retorno": "imagem do captcha" },
+      { "url": "/api/cf", "metodo": "POST", "body": "cfToken=<token do Turnstile>", "retorno": "{ result: <wh-cf-token> }" },
+      { "url": "/get_country_code", "metodo": "GET", "uso": "geo-targeting de experimentos e ads" }
+    ],
+    "formato_de_resposta": {
+      "shape": "{ \"info\": -1, \"code\": \"window.parent.sf.result.showEmptyResult({...});\" }",
+      "observacao": "A API devolve STRING de JavaScript para ser avaliada, referenciando window.parent.sf - transporte legado de iframe do SaveFrom. O JSON real vem embutido como argumento.",
+      "resposta_real_capturada": "{\"html\":\"Something went wrong...\",\"invalid_request\":true,\"resource\":\"\",\"success\":false,\"source_url\":\"...\"}",
+      "cache_client_side": "Map estatico com chave url+JSON.stringify(body), evita refetch do mesmo link"
+    }
+  },
+
+  "proxy_de_midia": {
+    "classe_no_bundle": "mediaUrlProcessor",
+    "preview_url": "https://media.sssinstagram.com/get?uri=<encoded>&__sig=<hmac>&__expires=<ts>",
+    "download_url": "https://media.sssinstagram.com/get?uri=<encoded>&filename=<nome>&__sig=<hmac>&__expires=<ts>&referer=https%3A%2F%2Fwww.instagram.com%2F",
+    "CORRECAO_VERIFICADA_2026-11-18": "Minha leitura inicial de que o referer forjado era o que destravava a CDN esta ERRADA. Teste direto: a mesma URL de CDN devolve HTTP 200 sem Referer e com Referer de outro dominio. As URLs do Instagram vem AUTO-ASSINADAS com oh=<HMAC> e oe=<expiracao hex, ~36h medido>; adulterar o oh da 403. CORS e '*'. Logo nao existe bloqueio por hotlink a contornar e o parametro referer= do proxy deles e legado/inofensivo.",
+    "motivo_real_do_proxy": "Medido nos headers da CDN: content-type video/mp4, access-control-allow-origin '*', e content-disposition AUSENTE. Como nao ha Content-Disposition e o atributo <a download> e ignorado cross-origin, o navegador TOCA o video em vez de salvar. O proxy existe para injetar Content-Disposition com filename, e secundariamente para esconder a URL da CDN e re-resolver links expirados.",
+    "assinatura": "__sig + __expires -> HMAC com expiracao, impede uso do proxy como open relay por terceiros",
+    "forca_download": "parametro dl=1 e filename extraido via regex /([\\w-]+\\.(?:jpg|mp4))$/i para o Content-Disposition",
+    "deteccao_de_url_ja_assinada": "se a URL ja contem __sig, retorna sem reprocessar"
+  },
+
+  "camadas_anti_abuso": [
+    {
+      "camada": "Corpo de requisicao assinado",
+      "detalhe": "Toda chamada passa por subscribeSignedRequestBody antes de sair. O assinador vive em chunk separado e lazy (/js/link.chunk.js) fortemente obfuscado: string-array com rotacao, identificadores aleatorios, literais em hex/unicode, e todas as strings reais comprimidas com LZString (decompressFromUTF16) expandidas em runtime. Usa alfabeto base64 customizado 'A-Za-z0-9+-$' em vez do padrao. Fallback sem assinatura monta { sf_url: <url> }.",
+      "importancia": "E o que invalidou o probe direto: a API respondeu invalid_request:true por falta de assinatura."
+    },
+    {
+      "camada": "x-token",
+      "detalhe": "Header 'x-token' lido de localStorage['whToken'], com fallback para variavel em memoria se o storage falhar. Emitido pelo /api/captcha apos resolver o captcha."
+    },
+    {
+      "camada": "wh-cf-token",
+      "detalhe": "Header 'wh-cf-token' lido de sessionStorage['wh_cf_token']. Emitido pelo /api/cf apos validar o Turnstile. Validacao de tamanho: cfToken <= 4096 chars na ida e result <= 4096 na volta."
+    },
+    {
+      "camada": "Cloudflare Turnstile ADAPTATIVO",
+      "detalhe": "Script https://challenges.cloudflare.com/turnstile/v0/api.js carregado on-demand com callback global __mscTurnstileOnLoad. O siteKey NAO esta no bundle: vem na resposta de erro da API como { challenge: { type:'turnstile', siteKey:'...' } }. Opcoes: appearance 'always', retry 'auto', handlers de error/expired/timeout/unsupported e silent failure timer.",
+      "importancia": "Design mais inteligente do site: o captcha so aparece quando o backend decide escalar, nao em toda requisicao. Friccao zero no caminho felizidade."
+    },
+    {
+      "camada": "Captcha de imagem legado",
+      "detalhe": "Fallback com par {image, hash} quando o Turnstile e indisponivel ou unsupported."
+    },
+    {
+      "camada": "Cloudflare WAF/CDN",
+      "detalhe": "Proxy em todos os dominios publicos, NEL/Report-To ativos, cf-cache-status HIT nas landings (HTML cacheado 1800s)"
+    },
+    {
+      "camada": "Privacidade de saida",
+      "detalhe": "meta name=referrer content=no-referrer para nao vazar a URL da pagina nos cliques de download"
+    }
+  ],
+
+  "analytics_e_growth": {
+    "ga4": "G-KDHKH4GDQE via googletagmanager gtag.js (async)",
+    "openreplay": {
+      "projectKey": "Eu8iSWqhsU5VWiVl1G6H",
+      "ingestPoint": "https://openreplay.multitool.cloud/ingest",
+      "recursos": "classes de privacidade openreplay-masked / openreplay-obscured / openreplay-label para censurar campos no replay"
+    },
+    "taxonomia_de_eventos": ["post_page_result_show", "reel_page_result_show", "story_page_result_show", "tt_post_page_result_show", "tw_post_page_result_show", "loader_show", "experiment_assign", "main_page_autoload_see_more", "show_comments_click", "story_link_click", "post_owner_profile_link_click", "prev_post_button_click"],
+    "framework_de_experimentos_proprio": {
+      "nome_interno": "analyticsTracker / experimentInits",
+      "experimentos_ativos": ["adsAfterSearch", "adsForm", "adsPopupClick", "propclick", "errorFallbackPopup", "tzLanding"],
+      "targeting": "por country (tier1/tier2/br/pk), excludedCountry, lang, os (Windows/macOS/Linux/Android), mobile true/false, expSample (% de amostra), runAt (documentReady)",
+      "geo": "resolve pais via /get_country_code",
+      "frequency_cap": "{ cap: 7, intervalAmount: 1, intervalType: 'day' } por experimento"
+    },
+    "monetizacao": "Redes de click-ads/popunder com criativos por pais; popup de fallback no erro que empurra a extensao SaveFrom Helper (Chrome/Firefox/Opera/Edge/Safari)"
+  },
+
+  "linhagem_savefrom": {
+    "achado": "O site e operado pela mesma casa do SaveFrom.net, nao e um projeto independente.",
+    "provas": [
+      "Resposta da API chama window.parent.sf.result.showEmptyResult(...) - namespace 'sf' = SaveFrom",
+      "Payload de fallback do assinador usa a chave 'sf_url'",
+      "errorFallbackPopup distribui a extensao savefrom.net com utm_source=s040104 e vid=796",
+      "OpenReplay hospedado em multitool.cloud (infra compartilhada)",
+      "Eventos de TikTok (tt_) e Twitter (tw_) no mesmo bundle = codebase unico para a familia sssTikTok/sssTwitter"
+    ]
+  },
+
+  "seo_e_i18n": {
+    "locales": 30,
+    "estrategia": "Path-based (/pt, /es, /en1...) com hreflang completo e x-default, canonical por locale, e chunk de traducao lazy por idioma",
+    "json_ld": ["WebSite + SearchAction", "WebApplication + Offer", "Organization", "FAQPage com 7 Question/Answer", "HowTo com 3 HowToStep"],
+    "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+  },
+
+  "para_sua_implementacao": {
+    "o_que_vale_copiar": [
+      {
+        "item": "Separar o extrator do site",
+        "porque": "O Laravel nunca toca o Instagram. Quem apanha bloqueio/ban de IP e o Worker Hub, que e descartavel e escalavel a parte. Seu site nunca cai junto com o scraper."
+      },
+      {
+        "item": "Proxy de midia para forcar o download (NAO para burlar hotlink)",
+        "porque": "Corrigido apos teste: a CDN nao exige Referer, a URL ja e auto-assinada. O proxy serve para injetar Content-Disposition com filename -- sem isso o navegador toca o video em vez de salvar. O par __sig/__expires proprio impede que terceiros usem seu proxy como CDN gratis. Se o seu caso de uso for backend (nao navegador), voce pode baixar direto da CDN e dispensar o proxy inteiro."
+      },
+      {
+        "item": "Captcha adaptativo em vez de fixo",
+        "porque": "Turnstile so e exigido quando o backend devolve um challenge na resposta. Mantem conversao alta e so pune trafego suspeito. O siteKey vir do servidor permite rotacionar sem redeploy."
+      },
+      {
+        "item": "Token de dois estagios (x-token + wh-cf-token)",
+        "porque": "Um persistente em localStorage (reputacao de longo prazo) e um de sessao em sessionStorage (prova de humanidade recente). Separa 'quem voce e' de 'voce acabou de provar que e humano'."
+      },
+      {
+        "item": "Cache client-side por url+body",
+        "porque": "Mata reenvio do mesmo link e corta custo de scraping sem nenhuma infra."
+      },
+      {
+        "item": "Vue progressivo sobre HTML server-side",
+        "porque": "Blade entrega o SEO (JSON-LD, FAQ, hreflang de 30 idiomas) e o Vue so assume os seletores do formulario. Sem o custo de SEO de uma SPA."
+      },
+      {
+        "item": "Assinador em chunk lazy e obfuscado",
+        "porque": "Mantem a logica anti-bot fora do bundle principal; trocar o algoritmo e trocar um arquivo, e scrapers que copiam o endpoint quebram."
+      }
+    ],
+    "o_que_nao_copiar": [
+      "Transporte por string de JavaScript avaliada (window.parent.sf...) - divida tecnica de 2010 e vetor de XSS. Devolva JSON puro.",
+      "As redes de popunder/click-ads e o popup que empurra extensao - destroi confianca e pode marcar seu dominio."
+    ],
+    "stack_equivalente_sugerida": {
+      "site": "Laravel/Blade (ou Next.js) + Vue 3/React progressivo, i18n path-based, JSON-LD completo",
+      "extrator": "Node + Fastify isolado, pool de proxies residenciais, fila (BullMQ/Redis), cache de resultado por shortcode",
+      "proxy_midia": "nginx/OpenResty com proxy_set_header Referer 'https://www.instagram.com/' + HMAC (secure_link ou Lua) com expiracao curta",
+      "anti_abuso": "Cloudflare Turnstile adaptativo + rate limit por IP/token + corpo assinado",
+      "observabilidade": "OpenReplay self-hosted + GA4 + eventos nomeados por etapa do funil"
+    },
+    "aviso_legal": "Baixar midia do Instagram viola os Termos de Uso da Meta, e a CDN e protegida por bloqueio de hotlink. Um servico desses opera em zona de risco juridico (DMCA, direito de autor do criador) e tecnico (ban de IP, quebra a cada mudanca de API). Vale desenhar a sua versao assumindo isso: sem retencao de arquivos, sem redistribuicao, e com canal de takedown."
+  }
+}
