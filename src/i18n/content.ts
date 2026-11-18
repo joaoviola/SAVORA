@@ -9,7 +9,7 @@ const CONTACT = "hello@savora.app";
 const en = {
   ui: {
     tagline: "Download. Save. Enjoy.",
-    placeholder: "Paste an Instagram link — post, reel, story…",
+    placeholder: "Paste an Instagram link — post, reel, photo…",
     paste: "Paste",
     download: "Download",
     loading: "Fetching media…",
@@ -24,7 +24,7 @@ const en = {
     faqTitle: "Frequently asked questions",
     stepsTitle: "How it works",
     steps: [
-      { h: "Copy the link", p: "Open Instagram, tap ··· or Share on the post, reel or story and choose Copy link." },
+      { h: "Copy the link", p: "Open Instagram, tap ··· or Share on the post or reel and choose Copy link." },
       { h: "Paste it here", p: "Drop the link into the field above. SAVORA detects the content type automatically." },
       { h: "Save the file", p: "Pick the quality you want and download the original file straight to your device." },
     ],
@@ -38,8 +38,8 @@ const en = {
     categoriesTitle: "What you can download",
     result: { item: "Item", video: "Video", image: "Photo", by: "by", all: "Download all" },
     errors: {
-      invalid_url: "That doesn't look like an Instagram post, reel, story or highlight link.",
-      unsupported: "This type of content isn't supported yet.",
+      invalid_url: "That doesn't look like an Instagram post or reel link.",
+      unsupported: "Stories and Highlights aren't supported — they need an Instagram login. Posts, Reels and photos work.",
       private: "This content is from a private account and can't be downloaded.",
       not_found: "We couldn't find this content. It may have been deleted.",
       not_configured: "The download service is temporarily unavailable. Please try again later.",
@@ -48,10 +48,10 @@ const en = {
     },
   },
   home: {
-    title: "SAVORA — Instagram Downloader for Videos, Reels, Photos & Stories",
-    description: "Download Instagram videos, Reels, photos, Stories, Highlights and carousels in original HD quality. Free, fast, no login required.",
+    title: "SAVORA — Instagram Downloader for Videos, Reels & Photos",
+    description: "Download Instagram videos, Reels, photos and carousels in original HD quality. Free, fast, no login required.",
     h1: "Instagram Downloader",
-    lead: "Save Instagram videos, Reels, photos and Stories in their original quality. Paste a link — we handle the rest.",
+    lead: "Save Instagram videos, Reels and photos in their original quality. Paste a link — we handle the rest.",
     sections: [
       { h: "A cleaner way to save Instagram media", p: [
         "SAVORA is an online Instagram downloader made for people who keep references, archive their own work or want to watch a Reel later without signal. Paste any public link and SAVORA reads what's inside: a single photo, a video, a Reel, a Story, a Highlight or a carousel with mixed media.",
@@ -121,7 +121,7 @@ const en = {
 const pt: typeof en = {
   ui: {
     tagline: "Download. Save. Enjoy.",
-    placeholder: "Cole um link do Instagram — post, reel, story…",
+    placeholder: "Cole um link do Instagram — post, reel, foto…",
     paste: "Colar",
     download: "Baixar",
     loading: "A obter o conteúdo…",
@@ -136,7 +136,7 @@ const pt: typeof en = {
     faqTitle: "Perguntas frequentes",
     stepsTitle: "Como funciona",
     steps: [
-      { h: "Copie o link", p: "No Instagram, toque em ··· ou Partilhar no post, reel ou story e escolha Copiar link." },
+      { h: "Copie o link", p: "No Instagram, toque em ··· ou Partilhar no post ou reel e escolha Copiar link." },
       { h: "Cole aqui", p: "Coloque o link no campo acima. O SAVORA identifica o tipo de conteúdo automaticamente." },
       { h: "Guarde o ficheiro", p: "Escolha a qualidade e baixe o ficheiro original diretamente para o seu dispositivo." },
     ],
@@ -150,8 +150,8 @@ const pt: typeof en = {
     categoriesTitle: "O que pode baixar",
     result: { item: "Item", video: "Vídeo", image: "Foto", by: "de", all: "Baixar tudo" },
     errors: {
-      invalid_url: "Isto não parece um link de post, reel, story ou destaque do Instagram.",
-      unsupported: "Este tipo de conteúdo ainda não é suportado.",
+      invalid_url: "Isto não parece um link de post ou reel do Instagram.",
+      unsupported: "Stories e destaques não são suportados — exigem login no Instagram. Posts, Reels e fotos funcionam.",
       private: "Este conteúdo é de uma conta privada e não pode ser baixado.",
       not_found: "Não encontrámos este conteúdo. Pode ter sido apagado.",
       not_configured: "O serviço de download está temporariamente indisponível. Tente mais tarde.",
@@ -160,10 +160,10 @@ const pt: typeof en = {
     },
   },
   home: {
-    title: "SAVORA — Baixar vídeos, Reels, fotos e Stories do Instagram",
-    description: "Baixe vídeos, Reels, fotos, Stories, destaques e carrosséis do Instagram em qualidade HD original. Grátis, rápido e sem login.",
+    title: "SAVORA — Baixar vídeos, Reels e fotos do Instagram",
+    description: "Baixe vídeos, Reels, fotos e carrosséis do Instagram em qualidade HD original. Grátis, rápido e sem login.",
     h1: "Baixar vídeos e fotos do Instagram",
-    lead: "Guarde vídeos, Reels, fotos e Stories do Instagram na qualidade original. Cole o link — nós tratamos do resto.",
+    lead: "Guarde vídeos, Reels e fotos do Instagram na qualidade original. Cole o link — nós tratamos do resto.",
     sections: [
       { h: "Uma forma mais simples de guardar conteúdo do Instagram", p: [
         "O SAVORA é um downloader de Instagram online para quem guarda referências, arquiva o próprio trabalho ou quer ver um Reel mais tarde sem rede. Cole qualquer link público e o SAVORA identifica o conteúdo: uma foto, um vídeo, um Reel, um Story, um destaque ou um carrossel misto.",

@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { DOWNLOADER_KEYS, SLUGS, isLang, pageFromSlug, pathFor, type Lang } from "@/i18n/pages";
+import { DOWNLOADER_KEYS, SLUGS, isHidden, isLang, pageFromSlug, pathFor, type Lang } from "@/i18n/pages";
 import { t } from "@/i18n/content";
 import { seoHead } from "@/lib/seo";
 import { Downloader } from "@/components/savora/Downloader";
@@ -8,7 +8,11 @@ import { getRequestOrigin } from "@/lib/origin.functions";
 
 export const Route = createFileRoute("/$lang/$slug")({
   beforeLoad: ({ params }) => {
-    if (!isLang(params.lang) || !pageFromSlug(params.lang, params.slug)) throw notFound();
+    if (!isLang(params.lang)) throw notFound();
+    const key = pageFromSlug(params.lang, params.slug);
+    // Páginas escondidas devolvem 404 em vez de só sumirem do menu: deixar a
+    // rota viva manteria o link indexado e prometendo algo que dá erro.
+    if (!key || isHidden(key)) throw notFound();
   },
   loader: async () => ({ origin: await getRequestOrigin() }),
   head: ({ params, loaderData }) => {
