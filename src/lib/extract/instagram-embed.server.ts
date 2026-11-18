@@ -83,7 +83,10 @@ export const instagramEmbed: Extractor = {
       if (res.status === 404) return { ok: false, error: "not_found" };
       if (!res.ok) { console.error("embed status", res.status); return { ok: false, error: "upstream" }; }
       try {
-        const data = mediaFromContext(parseContextJson(await res.text()), sc);
+        const html = await res.text();
+        // Login wall without contextJSON means Instagram blocked us, not that the post is private.
+        if (!html.includes('"contextJSON":') && /login/i.test(html)) { console.error("embed login wall", sc); return { ok: false, error: "upstream" }; }
+        const data = mediaFromContext(parseContextJson(html), sc);
         let exp = now + TTL;
         for (const it of data.items) { const oe = cdnExpiry(it.variants[0]!.url); if (oe) exp = Math.min(exp, oe - MARGIN); }
         hit = { exp, data };
