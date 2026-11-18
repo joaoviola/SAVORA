@@ -74,6 +74,57 @@ export function mediaFromContext(ctx: any, sc: string) {
   return { author, caption: typeof caption === "string" ? caption.slice(0, 280) : undefined, items };
 }
 
+/**
+ * Vários UAs de crawler, tentados por ordem.
+ *
+ * O bloqueio do Instagram não é estável: varia por IP, região e momento.
+ * Um único UA é um ponto único de falha — se aquele cair, tudo cai.
+ * Todos estes foram verificados a devolver o conteúdo real.
+ */
+export const UA_FALLBACKS = [
+  UA,
+  "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  "Twitterbot/1.0",
+  "WhatsApp/2.23.20.0",
+  "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+] as const;
+
+/** Diagnóstico de uma tentativa; alimenta a rota /api/public/diag. */
+export type Attempt = { ua: string; status: number | null; length: number; hasContext: boolean; error?: string };
+
+export async function tryFetchEmbed(sc: string, ua: string): Promise<Attempt> {
+  try {
+    const res = await fetch(`https://www.instagram.com/reel/${sc}/embed/captioned/`, {
+      headers: { "User-Agent": ua, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
+      signal: AbortSignal.timeout(20000),
+    });
+    const html = await res.text();
+    return { ua, status: res.status, length: html.length, hasContext: html.includes('"contextJSON":') };
+  } catch (e) {
+    return { ua, status: null, length: 0, hasContext: false, error: e instanceof Error ? e.name : "unknown" };
+  }
+}
+
+/** Percorre os UAs até um devolver conteúdo real. Lança ExtractError se nenhum devolver. */
+async function fetchEmbedHtml(sc: string): Promise<string> {
+  let viu404 = false;
+  for (const ua of UA_FALLBACKS) {
+    const res = await fetch(`https://www.instagram.com/reel/${sc}/embed/captioned/`, {
+      headers: { "User-Agent": ua, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
+      signal: AbortSignal.timeout(20000),
+    }).catch(() => null);
+    if (!res) continue;
+    if (res.status === 404) { viu404 = true; continue; }
+    if (!res.ok) continue;
+    const html = await res.text();
+    if (html.includes('"contextJSON":')) return html;
+    // 200 grande e sem contextJSON = login wall: bloqueio, não post privado.
+    console.error(`embed bloqueado ua=${ua} len=${html.length}`);
+  }
+  if (viu404) throw new ExtractError("not_found", "404 em todos os UAs");
+  throw new ExtractError("not_found", "login wall em todos os UAs");
+}
+
 const cache = new Map<string, { exp: number; data: ReturnType<typeof mediaFromContext> }>();
 
 export const instagramEmbed: Extractor = {
@@ -85,19 +136,15 @@ export const instagramEmbed: Extractor = {
     const now = Date.now();
     let hit = cache.get(sc);
     if (!hit || hit.exp < now) {
-      let res: Response;
+      let html: string;
       try {
-        res = await fetch(`https://www.instagram.com/reel/${sc}/embed/captioned/`, {
-          headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
-          signal: AbortSignal.timeout(20000),
-        });
-      } catch (e) { console.error("embed fetch failed", e); return { ok: false, error: "upstream" }; }
-      if (res.status === 404) return { ok: false, error: "not_found" };
-      if (!res.ok) { console.error("embed status", res.status); return { ok: false, error: "upstream" }; }
+        html = await fetchEmbedHtml(sc);
+      } catch (e) {
+        if (e instanceof ExtractError) return { ok: false, error: e.code };
+        console.error("embed fetch failed", e);
+        return { ok: false, error: "upstream" };
+      }
       try {
-        const html = await res.text();
-        // Login wall without contextJSON means Instagram blocked us, not that the post is private.
-        if (!html.includes('"contextJSON":') && /login/i.test(html)) { console.error("embed login wall", sc); return { ok: false, error: "upstream" }; }
         const data = mediaFromContext(parseContextJson(html), sc);
         let exp = now + TTL;
         for (const it of data.items) { const oe = cdnExpiry(it.variants[0]!.url); if (oe) exp = Math.min(exp, oe - MARGIN); }

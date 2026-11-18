@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LangRouteImport } from './routes/$lang'
 import { Route as LangIndexRouteImport } from './routes/$lang.index'
 import { Route as LangSlugRouteImport } from './routes/$lang.$slug'
+import { Route as ApiPublicDiagRouteImport } from './routes/api/public/diag'
 import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const LangSlugRoute = LangSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => LangRoute,
 } as any)
+const ApiPublicDiagRoute = ApiPublicDiagRouteImport.update({
+  id: '/api/public/diag',
+  path: '/api/public/diag',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFileRoute = ApiPublicFileRouteImport.update({
   id: '/api/public/file',
   path: '/api/public/file',
@@ -46,12 +52,14 @@ export interface FileRoutesByFullPath {
   '/$lang': typeof LangRouteWithChildren
   '/$lang/$slug': typeof LangSlugRoute
   '/$lang/': typeof LangIndexRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
   '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$lang/$slug': typeof LangSlugRoute
   '/$lang': typeof LangIndexRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
   '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRoutesById {
@@ -60,25 +68,34 @@ export interface FileRoutesById {
   '/$lang': typeof LangRouteWithChildren
   '/$lang/$slug': typeof LangSlugRoute
   '/$lang/': typeof LangIndexRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
   '/api/public/file': typeof ApiPublicFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$lang' | '/$lang/$slug' | '/$lang/' | '/api/public/file'
+  fullPaths:
+    | '/'
+    | '/$lang'
+    | '/$lang/$slug'
+    | '/$lang/'
+    | '/api/public/diag'
+    | '/api/public/file'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$lang/$slug' | '/$lang' | '/api/public/file'
+  to: '/' | '/$lang/$slug' | '/$lang' | '/api/public/diag' | '/api/public/file'
   id:
     | '__root__'
     | '/'
     | '/$lang'
     | '/$lang/$slug'
     | '/$lang/'
+    | '/api/public/diag'
     | '/api/public/file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LangRoute: typeof LangRouteWithChildren
+  ApiPublicDiagRoute: typeof ApiPublicDiagRoute
   ApiPublicFileRoute: typeof ApiPublicFileRoute
 }
 
@@ -112,6 +129,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LangSlugRouteImport
       parentRoute: typeof LangRoute
     }
+    '/api/public/diag': {
+      id: '/api/public/diag'
+      path: '/api/public/diag'
+      fullPath: '/api/public/diag'
+      preLoaderRoute: typeof ApiPublicDiagRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/file': {
       id: '/api/public/file'
       path: '/api/public/file'
@@ -137,6 +161,7 @@ const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LangRoute: LangRouteWithChildren,
+  ApiPublicDiagRoute: ApiPublicDiagRoute,
   ApiPublicFileRoute: ApiPublicFileRoute,
 }
 export const routeTree = rootRouteImport
