@@ -291,7 +291,25 @@ def dl(
 
 from fastapi import Body, Header  # noqa: E402
 
-CHAVE_SCRAPER = os.environ.get("SCRAPER_API_KEY", "")
+CHAVE_SCRAPER = os.environ.get("SCRAPER_API_KEY", "").strip()
+
+
+def _normalizar_chave(cabecalho: str) -> str:
+    """
+    Extrai a chave de um header Authorization tolerando os erros de
+    copiar-e-colar que custam horas a diagnosticar:
+      'Bearer x' / 'bearer x' / 'x' / '"x"' / "SCRAPER_API_KEY=x"
+    Nenhum deles enfraquece a autenticacao: a comparacao final continua
+    a ser do valor exato, em tempo constante.
+    """
+    v = cabecalho.strip()
+    if v.lower().startswith("bearer "):
+        v = v[7:].strip()
+    if v.lower().startswith("scraper_api_key="):   # linha inteira do .env colada
+        v = v.split("=", 1)[1].strip()
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+        v = v[1:-1].strip()
+    return v
 
 
 @app.post("/api/scrape")
@@ -301,9 +319,22 @@ def api_scrape(
     authorization: str | None = Header(default=None),
 ) -> dict:
     if CHAVE_SCRAPER:
-        esperado = f"Bearer {CHAVE_SCRAPER}"
-        if not authorization or not hmac.compare_digest(authorization, esperado):
-            raise HTTPException(401, detail="unauthorized")
+        if not authorization:
+            raise HTTPException(401, detail="unauthorized: header Authorization ausente")
+        recebida = _normalizar_chave(authorization)
+        if not hmac.compare_digest(recebida, CHAVE_SCRAPER):
+            # Diagnostico sem vazar segredo: so comprimentos e um prefixo curto.
+            # Sem isto, um 401 e indistinguivel de 'o servico esta partido'.
+            raise HTTPException(
+                401,
+                detail=(
+                    "unauthorized: a chave recebida nao corresponde. "
+                    f"recebi {len(recebida)} caracteres comecados por "
+                    f"'{recebida[:4]}', esperava {len(CHAVE_SCRAPER)} caracteres. "
+                    "Confirme que colou apenas o VALOR da chave, sem o prefixo "
+                    "'SCRAPER_API_KEY=' e sem aspas."
+                ),
+            )
 
     checar_limite(request.client.host if request.client else "?")
 
