@@ -1,0 +1,26 @@
+# Blueprint do Render — Worker Hub do SAVORA.
+#
+# Deploy sem CLI e sem login por navegador:
+#   render.com -> New -> Blueprint -> escolher o repositorio joaoviola/SAVORA
+#
+# Constroi so a pasta scraper/ (o front-end vai para a Vercel).
+services:
+  - type: web
+    name: savora-scraper
+    runtime: docker
+    dockerfilePath: ./scraper/Dockerfile
+    dockerContext: ./scraper
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # O Render gera o valor; copie-o do painel para a Vercel com o
+      # botao de copiar. Evita o copiar-e-colar a mao que falhou tres
+      # vezes (prefixo junto, aspas, e duas linhas do .env de uma vez).
+      - key: SCRAPER_API_KEY
+        generateValue: true
+      - key: IG_SEGREDO
+        generateValue: true
+      - key: PORT
+        value: 8000

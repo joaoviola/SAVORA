@@ -68,7 +68,10 @@ export const customScraper: Extractor = {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
         body: JSON.stringify({ url, type }),
-        signal: AbortSignal.timeout(25000),
+        // 55s, nao 25s: no plano gratuito do Render o servico dorme apos
+        // inatividade e leva ~50s a acordar. Com 25s o primeiro pedido
+        // depois de uma pausa falhava sempre, mesmo estando tudo correto.
+        signal: AbortSignal.timeout(55000),
       });
     } catch (e) {
       console.error("scraper fetch failed", e);
