@@ -433,15 +433,23 @@ def api_diag(sc: str = Query("Dbn-XJhk0_-", max_length=32)) -> dict:
 
 
 # --------------------------------------------------------------------------
-# front-end de demonstracao
+# raiz
 # --------------------------------------------------------------------------
-# Mount em "/" captura tudo que nao casou antes, inclusive o METODO errado
-# (um POST para /api/scrape vira 405 se a rota vier depois daqui).
-# Por isso este bloco tem de ser o ULTIMO do arquivo, sempre.
-# Opcional: o SAVORA tem o proprio front-end em React.
+# Este servico e um BACKEND, nao um site. Antes havia aqui um front-end de
+# demonstracao montado em "/", e abrir o endereco do tunel no navegador
+# mostrava essa pagina -- dando a impressao de que o site publicado era
+# este. Nao e: o site e o app SAVORA alojado no Lovable, e este servico so
+# responde a /api/scrape quando a extracao falha no servidor dele.
 
-from fastapi.staticfiles import StaticFiles  # noqa: E402
-
-_WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
-if os.path.isdir(_WEB):
-    app.mount("/", StaticFiles(directory=_WEB, html=True), name="web")
+@app.get("/")
+def raiz() -> dict:
+    return {
+        "servico": "SAVORA Worker Hub",
+        "o_que_e": "Backend de extracao. Nao e o site SAVORA.",
+        "o_site": "O site publicado e o app SAVORA no Lovable, nao este endereco.",
+        "endpoints": {
+            "POST /api/scrape": "extracao (usado pelo app; exige Bearer)",
+            "GET /api/diag": "este servidor consegue extrair do Instagram?",
+            "GET /healthz": "estado do servico",
+        },
+    }
