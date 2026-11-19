@@ -384,6 +384,54 @@ def api_scrape(
     return {k: v for k, v in payload.items() if k != "itens"}
 
 
+@app.get("/api/diag")
+def api_diag(sc: str = Query("Dbn-XJhk0_-", max_length=32)) -> dict:
+    """
+    Diz se ESTE servidor consegue extrair do Instagram.
+
+    A resposta do Instagram depende do IP de quem pede: uma ligacao
+    domestica costuma passar, um IP de datacenter costuma apanhar login
+    wall. Depois de um deploy, abrir este endpoint responde de imediato
+    se a maquina serve para o trabalho -- sem adivinhar.
+
+    Nao expoe segredos: so estado de rede.
+    """
+    sc = re.sub(r"[^A-Za-z0-9_-]", "", sc)[:32] or "Dbn-XJhk0_-"
+    url = f"https://www.instagram.com/reel/{sc}/embed/captioned/"
+    try:
+        r = requests.get(
+            url,
+            headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"},
+            impersonate=IMPERSONATE,
+            timeout=30,
+        )
+        corpo = r.text
+        tem_ctx = '"contextJSON":' in corpo
+        return {
+            "shortcode": sc,
+            "ok": tem_ctx,
+            "http_status": r.status_code,
+            "tamanho": len(corpo),
+            "tem_contextJSON": tem_ctx,
+            "chave_exigida": bool(CHAVE_SCRAPER),
+            "veredito": (
+                "Este servidor CONSEGUE extrair -- serve como Worker Hub."
+                if tem_ctx else
+                "Login wall: 200 sem contextJSON. O IP deste servidor esta "
+                "bloqueado pelo Instagram e nenhum User-Agent resolve. "
+                "Use uma ligacao residencial (tunel) em vez deste host."
+            ),
+        }
+    except Exception as e:
+        return {
+            "shortcode": sc,
+            "ok": False,
+            "erro": f"{type(e).__name__}: {e}"[:200],
+            "chave_exigida": bool(CHAVE_SCRAPER),
+            "veredito": "Este servidor nao alcancou o Instagram.",
+        }
+
+
 # --------------------------------------------------------------------------
 # front-end de demonstracao
 # --------------------------------------------------------------------------

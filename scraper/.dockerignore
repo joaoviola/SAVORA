@@ -1,0 +1,11 @@
+.env
+cookies.txt
+*.bruto.tmp
+downloads/
+__pycache__/
+*.pyc
+.venv/
+baixar_stories.py
+testar_tunel.mjs
+hub.json
+README.md

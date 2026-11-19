@@ -1,0 +1,27 @@
+# Worker Hub do SAVORA no Fly.io
+#
+#   fly launch --no-deploy --name savora-scraper   (primeira vez)
+#   fly secrets set SCRAPER_API_KEY=<a-sua-chave>
+#   fly deploy
+app = "savora-scraper"
+primary_region = "lhr"
+
+[build]
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Dorme quando nao ha trafego e acorda ao primeiro pedido: e um
+  # fallback, nao o caminho principal, por isso o arranque a frio paga-se.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[http_service.concurrency]
+  type = "requests"
+  soft_limit = 20
+  hard_limit = 40
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
