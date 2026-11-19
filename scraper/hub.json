@@ -1,6 +1,7 @@
 {
   "_leia": "Endereco atual do Worker Hub. O app le este ficheiro para descobrir o hub, por isso trocar de tunel e um commit aqui -- nao uma ida ao painel do Lovable. A chave continua a ser um secret.",
-  "url": "https://they-doug-install-feet.trycloudflare.com/api/scrape",
-  "atualizadoEm": "2026-11-19T08:35:00Z",
-  "nota": "Tunel trycloudflare e efemero: muda a cada reinicio e a Cloudflare recicla os inativos."
+  "url": "https://audacity-helping-hastiness.ngrok-free.dev/api/scrape",
+  "atualizadoEm": "2026-11-19T10:40:00Z",
+  "tunel": "ngrok",
+  "nota": "Endereco atribuido pelo ngrok sem dominio fixo: muda se o tunel for reiniciado. Reservar o dominio gratuito no painel (Domains -> Create Domain) e por em NGROK_DOMAIN no .env torna-o estavel."
 }
