@@ -27,10 +27,12 @@ export const Route = createFileRoute("/api/public/diag")({
         const diretoOk = attempts.some((a) => a.hasContext);
 
         // ---- 2. Worker Hub (customScraper) ----
-        const rawUrl = process.env["SCRAPER_URL"] ?? "";
+        const { resolverEndpoint } = await import("@/lib/extract/custom-scraper.server");
+        const rawUrl = (await resolverEndpoint()) ?? "";
         const rawKey = process.env["SCRAPER_API_KEY"] ?? "";
         const workerHub: Record<string, unknown> = {
-          SCRAPER_URL_definido: Boolean(rawUrl),
+          origem_do_endereco: process.env["SCRAPER_URL"]?.trim() === rawUrl && rawUrl ? "secret SCRAPER_URL" : rawUrl ? "hub.json no repositorio" : "nenhuma",
+          SCRAPER_URL_secret_definido: Boolean(process.env["SCRAPER_URL"]),
           SCRAPER_API_KEY_definido: Boolean(rawKey),
           chave_comprimento: rawKey.length,
           chave_tem_espacos_nas_pontas: rawKey !== rawKey.trim(),

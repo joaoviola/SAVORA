@@ -1,0 +1,6 @@
+{
+  "_leia": "Endereco atual do Worker Hub. O app le este ficheiro para descobrir o hub, por isso trocar de tunel e um commit aqui -- nao uma ida ao painel do Lovable. A chave continua a ser um secret.",
+  "url": "https://they-doug-install-feet.trycloudflare.com/api/scrape",
+  "atualizadoEm": "2026-11-19T08:35:00Z",
+  "nota": "Tunel trycloudflare e efemero: muda a cada reinicio e a Cloudflare recicla os inativos."
+}

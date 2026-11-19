@@ -14,11 +14,52 @@ function toItem(m: any): MediaItem | null {
   return { kind: video || m.type === "video" || m.is_video ? "video" : "image", thumbnail: image ?? variants[0].url, variants };
 }
 
+/**
+ * Descoberta do endereço do Worker Hub.
+ *
+ * O hub corre atrás de um túnel efémero, cujo endereço muda a cada
+ * reinício. Guardá-lo apenas num secret significa que cada troca de túnel
+ * deixa a app quebrada até alguém abrir o painel. Por isso o endereço vive
+ * em `scraper/hub.json` no repositório: trocar de túnel passa a ser um
+ * commit, e a chave — essa sim estável — continua a ser um secret.
+ *
+ * Ordem: hub.json → `SCRAPER_URL` → não configurado.
+ *
+ * O hub.json vem primeiro de propósito. Um `SCRAPER_URL` guardado no painel
+ * fica desatualizado assim que o túnel muda, e aí um secret obsoleto
+ * ganharia da fonte que está correta. O secret serve agora de rede de
+ * segurança para quando o GitHub estiver inalcançável.
+ */
+const HUB_JSON = "https://raw.githubusercontent.com/joaoviola/SAVORA/main/scraper/hub.json";
+const DESCOBERTA_TTL = 60_000;
+let descoberto: { url: string | null; exp: number } = { url: null, exp: 0 };
+
+export async function resolverEndpoint(): Promise<string | null> {
+  const manual = process.env["SCRAPER_URL"]?.trim() || null;
+
+  const agora = Date.now();
+  if (descoberto.exp > agora) return descoberto.url ?? manual;
+  try {
+    const r = await fetch(`${HUB_JSON}?t=${Math.floor(agora / DESCOBERTA_TTL)}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: "application/json" },
+    });
+    const j = r.ok ? ((await r.json()) as { url?: unknown }) : null;
+    const u = typeof j?.url === "string" && j.url.startsWith("https://") ? j.url : null;
+    descoberto = { url: u, exp: agora + DESCOBERTA_TTL };
+    return u ?? manual;
+  } catch {
+    // Mantém o último endereço conhecido em vez de ficar sem hub.
+    descoberto = { url: descoberto.url, exp: agora + DESCOBERTA_TTL };
+    return descoberto.url ?? manual;
+  }
+}
+
 /** Adapter for the owner's JSON scraper. Adjust mapping here once the response format is known. */
 export const customScraper: Extractor = {
   name: "custom-scraper",
   async extract(url: string, type: ContentType): Promise<ExtractResponse> {
-    const endpoint = process.env["SCRAPER_URL"];
+    const endpoint = await resolverEndpoint();
     if (!endpoint) return { ok: false, error: "not_configured" };
     const key = process.env["SCRAPER_API_KEY"];
     let res: Response;
