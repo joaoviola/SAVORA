@@ -42,33 +42,46 @@ export SCRAPER_API_KEY="um-valor-forte"
 uvicorn api:app --host 127.0.0.1 --port 8000
 ```
 
-### Expor publicamente
-
-Com qualquer um destes, o URL gerado é o que vai para `SCRAPER_URL`:
+### Expor publicamente — ngrok (recomendado)
 
 ```bash
-# Cloudflare Tunnel — gratuito, sem conta para testes
-cloudflared tunnel --url http://localhost:8000
+python subir.py
 ```
 
-```bash
-# ngrok
-ngrok http 8000
+Sobe o serviço e o túnel **no mesmo processo**: se o túnel cair, cai tudo,
+em vez de o serviço ficar de pé a finger que está acessível.
+
+Precisa de duas linhas em `scraper/.env`:
+
+```
+NGROK_AUTHTOKEN=<token do painel do ngrok>
+NGROK_DOMAIN=<o-seu>.ngrok-free.app
 ```
 
-Num VPS, dispense o túnel e ponha atrás de nginx com TLS.
+O `NGROK_DOMAIN` é o que torna isto durável — o plano gratuito do ngrok dá
+um domínio estático, e o endereço deixa de mudar a cada arranque.
+
+> O `cloudflared tunnel --url` também funciona, mas gera um endereço novo
+> a cada arranque e a Cloudflare recicla os inativos (`Unauthorized: Tunnel
+> not found`). Foi o que partiu isto antes.
+
+Num VPS, dispense o túnel e ponha atrás de nginx com TLS. Para alojar na
+nuvem há `Dockerfile` e `fly.toml` aqui — mas confirme primeiro com
+`/api/diag` se o IP desse host extrai, porque IP de datacenter costuma
+apanhar login wall.
 
 ### Ligar ao app
 
-No ambiente do SAVORA (Lovable → Settings → Environment Variables):
+O endereço vive em [`hub.json`](./hub.json), que o servidor lê com cache de
+60 s. Trocar de túnel é **um commit**, não uma ida ao painel.
+
+Só a chave é secret no Lovable, e essa não muda:
 
 ```
-SCRAPER_URL=https://<o-seu-tunel>/api/scrape
 SCRAPER_API_KEY=o-mesmo-valor-forte
 ```
 
-Sem `SCRAPER_URL`, o `customScraper` devolve `not_configured` e não há
-segunda tentativa.
+Ordem de resolução: `hub.json` → `SCRAPER_URL` → não configurado.
 
 ---
 
