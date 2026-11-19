@@ -20,8 +20,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scraper/api.py scraper/baixar_ig.py ./
 
+# Arranque num script com caminho previsivel. O painel do Render pode ter
+# um start command gravado que nao existe na imagem ('Could not find the
+# start command'); aponta-lo a /app/start.sh -- ou deixar o campo vazio,
+# usando este CMD -- funciona nos dois casos.
+RUN printf '#!/bin/sh
+exec python -m uvicorn api:app --host 0.0.0.0 --port "${PORT:-8000}"
+' > /app/start.sh     && chmod +x /app/start.sh
+
 RUN useradd --create-home app && chown -R app:app /app
 USER app
 
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["/app/start.sh"]
