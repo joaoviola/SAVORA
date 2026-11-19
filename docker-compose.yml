@@ -1,0 +1,42 @@
+# SAVORA completo a partir deste repositorio -- sem Lovable.
+#
+#   cp .env.example .env    (e preencha SCRAPER_API_KEY)
+#   docker compose up -d --build
+#
+# O app fala com o scraper pela rede interna do compose, por isso nao ha
+# tunel nem endereco publico para o hub: 'http://scraper:8000' so existe
+# dentro da stack.
+#
+# ATENCAO ao IP: medido no servidor do Lovable, o Instagram devolveu
+# HTTP 429. Num VPS de datacenter espere o mesmo. O IP que passou em
+# todos os testes foi residencial -- por isso considere correr o servico
+# 'scraper' em casa (ou com proxies residenciais) mesmo que o 'app'
+# fique alojado na nuvem.
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      SCRAPER_URL: http://scraper:8000/api/scrape
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:?defina SCRAPER_API_KEY no .env}
+    depends_on:
+      scraper:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scraper:
+    build: ./scraper
+    environment:
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:?defina SCRAPER_API_KEY no .env}
+      IG_SEGREDO: ${IG_SEGREDO:-}
+    # Sem 'ports': o hub nao fica exposto a internet, so ao app.
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped

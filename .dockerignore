@@ -1,0 +1,7 @@
+node_modules
+.output
+.git
+.venv
+scraper/.env
+scraper/__pycache__
+scraper/downloads
