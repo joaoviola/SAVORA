@@ -1,7 +1,10 @@
 node_modules
 .output
+.vercel
 .git
 .venv
+src
+public
+deploy
 scraper/.env
-scraper/__pycache__
-scraper/downloads
+scraper/web
