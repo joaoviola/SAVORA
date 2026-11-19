@@ -14,7 +14,9 @@
 # fique alojado na nuvem.
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: deploy/app.Dockerfile
     ports:
       - "3000:3000"
     environment:
